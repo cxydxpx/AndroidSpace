@@ -1,1 +1,1 @@
-include ':app', ':greendaodemo', ':thermalview', ':httpdemo', ':systemdemo', ':handlerthreaddemo','servicetest'
+include ':app', ':greendaodemo', ':thermalview', ':httpdemo', ':systemdemo', ':handlerthreaddemo', ':animal','servicetest'
