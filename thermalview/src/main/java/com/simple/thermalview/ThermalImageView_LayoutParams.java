@@ -14,9 +14,9 @@ import android.widget.LinearLayout;
 
 import java.text.DecimalFormat;
 
-public class ThermalImageView extends View {
+public class ThermalImageView_LayoutParams extends View implements View.OnHoverListener {
 
-    private static String TAG = ThermalImageView.class.getSimpleName();
+    private static String TAG = ThermalImageView_LayoutParams.class.getSimpleName();
     // 格式化温度值
     private static DecimalFormat fmt = new DecimalFormat("#0.0");
     // 布局 宽度/高度
@@ -59,17 +59,17 @@ public class ThermalImageView extends View {
     private int widthNum = 32;
     private int heigthNum = 32;
 
-    public ThermalImageView(Context context) {
+    public ThermalImageView_LayoutParams(Context context) {
         super(context);
         initView(context);
     }
 
-    public ThermalImageView(Context context, AttributeSet attrs) {
+    public ThermalImageView_LayoutParams(Context context, AttributeSet attrs) {
         super(context, attrs);
         initView(context);
     }
 
-    public ThermalImageView(Context context, AttributeSet attrs, int defStyleAttr) {
+    public ThermalImageView_LayoutParams(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         initView(context);
     }
@@ -77,7 +77,16 @@ public class ThermalImageView extends View {
 
     private void initView(Context context) {
 
+        Log.i(TAG, "initView: 初始化");
+
+        setOnHoverListener(this);
+
         localArr = new ValueBean[widthNum][heigthNum];
+
+        /**
+         * 是否可拖拽
+         */
+//        setOnTouchListener(this);
 
         mContext = context;
 
@@ -134,27 +143,30 @@ public class ThermalImageView extends View {
      */
     private void drawThermalImport(Canvas canvas) {
 
-        canvas.drawLine(getRight(), getBottom() - 100, getRight(), getBottom(), mPaintLine);
-        canvas.drawLine(getRight(), getBottom() / 2 - 100, getRight(), getBottom() / 2 + 100, mPaintLine);
-        canvas.drawLine(getRight() - 5, getBottom() / 2, getRight(), getBottom() / 2, mPaintLine);
-        Path path = new Path();
-        path.moveTo(getRight() - 15, getBottom() / 2);
-        path.lineTo(getRight() - 5, getBottom() / 2 - 20);
-        path.lineTo(getRight() - 5, getBottom() / 2 + 20);
-        path.close();
-        canvas.drawPath(path, mPaintLine);
+        if (isDrawIndicateLine) {
+            canvas.drawLine(getRight(), getBottom() - 100, getRight(), getBottom(), mPaintLine);
+            canvas.drawLine(getRight(), getBottom() / 2 - 100, getRight(), getBottom() / 2 + 100, mPaintLine);
+            canvas.drawLine(getRight() - 5, getBottom() / 2, getRight(), getBottom() / 2, mPaintLine);
+            Path path = new Path();
+            path.moveTo(getRight() - 15, getBottom() / 2);
+            path.lineTo(getRight() - 5, getBottom() / 2 - 20);
+            path.lineTo(getRight() - 5, getBottom() / 2 + 20);
+            path.close();
+            canvas.drawPath(path, mPaintLine);
 
 
-        canvas.drawLine(getRight() - 100, getBottom(), getRight(), getBottom(), mPaintLine);
-        canvas.drawLine(getRight() / 2 - 100, getBottom(), getRight() / 2 + 100, getBottom(), mPaintLine);
-        canvas.drawLine(getRight() / 2, getBottom() - 5, getRight() / 2, getBottom(), mPaintLine);
+            canvas.drawLine(getRight() - 100, getBottom(), getRight(), getBottom(), mPaintLine);
+            canvas.drawLine(getRight() / 2 - 100, getBottom(), getRight() / 2 + 100, getBottom(), mPaintLine);
+            canvas.drawLine(getRight() / 2, getBottom() - 5, getRight() / 2, getBottom(), mPaintLine);
 
-        Path path2 = new Path();
-        path2.moveTo(getRight() / 2, getBottom() - 15);
-        path2.lineTo(getRight() / 2 - 20, getBottom() - 5);
-        path2.lineTo(getRight() / 2 + 20, getBottom() - 5);
-        path2.close();
-        canvas.drawPath(path2, mPaintLine);
+            Path path2 = new Path();
+            path2.moveTo(getRight() / 2, getBottom() - 15);
+            path2.lineTo(getRight() / 2 - 20, getBottom() - 5);
+            path2.lineTo(getRight() / 2 + 20, getBottom() - 5);
+            path2.close();
+            canvas.drawPath(path2, mPaintLine);
+
+        }
 
         canvas.drawRect(
                 distinctleft * meanWidth,
@@ -273,7 +285,7 @@ public class ThermalImageView extends View {
                 lastX = (int) event.getRawX();
                 lastY = (int) event.getRawY();
 
-                Log.i(TAG, "onTouchEvent:  "
+                Log.i(TAG, ": down  "
                         + "  left == " + oriLeft
                         + "  right == " + oriRight
                         + "  top == " + oriTop
@@ -336,25 +348,23 @@ public class ThermalImageView extends View {
                         break;
                 }
                 if (dragDirection != CENTER) {
-                    Log.i(TAG, "delDrag:  "
+                    Log.i(TAG, "onTouchEvent: move:  "
                             + "  left == " + oriLeft
-                            + "  right == " +  oriRight
+                            + "  right == " + (currentViewMaxWidth - oriRight)
                             + "  top == " + oriTop
-                            + "  bottom == " +  oriBottom
+                            + "  bottom == " + (currentViewMaxHeight - oriBottom)
                     );
-
-
                     layout(oriLeft, oriTop, oriRight, oriBottom); //这里改掉
 
-////                    //通过这个方法来更新view，计算出左、上、右、下的值设置进去
-//                    LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) getLayoutParams();
-//                    // 通过修改params里面的值更新view
-//                    layoutParams.setMargins(
-//                            oriLeft,
-//                            oriTop,
-//                            currentViewMaxWidth - oriRight,
-//                            currentViewMaxHeight - oriBottom);
-//                    setLayoutParams(layoutParams);
+//                    //通过这个方法来更新view，计算出左、上、右、下的值设置进去
+                    LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) getLayoutParams();
+                    // 通过修改params里面的值更新view
+                    layoutParams.setMargins(
+                            oriLeft,
+                            oriTop,
+                            currentViewMaxWidth - oriRight,
+                            currentViewMaxHeight - oriBottom);
+                    setLayoutParams(layoutParams);
                 }
                 lastX = (int) event.getRawX();
                 lastY = (int) event.getRawY();
@@ -526,6 +536,7 @@ public class ThermalImageView extends View {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+//        Log.i(TAG, "onMeasure: 测量");
         // 获取宽-测量规则的模式和大小
         int widthMode = MeasureSpec.getMode(widthMeasureSpec);
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
@@ -558,12 +569,12 @@ public class ThermalImageView extends View {
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
 
-        Log.i(TAG, "onLayout:  " + changed
-                + "  left == " + left
-                + "  right == " + right
-                + "  top == " + top
-                + "  bottom == " + bottom
-        );
+//        Log.i(TAG, "onLayout:  " + changed
+//                + "  left == " + left
+//                + "  right == " + right
+//                + "  top == " + top
+//                + "  bottom == " + bottom
+//        );
 
         if (onlyOneLayout) {
             onlyOneLayout = false;
@@ -576,4 +587,27 @@ public class ThermalImageView extends View {
     }
 
 
+    private boolean isDrawIndicateLine;
+
+    @Override
+    public boolean onHover(View v, MotionEvent event) {
+        int action = event.getAction();
+        switch (action) {
+            case MotionEvent.ACTION_HOVER_ENTER:
+                isDrawIndicateLine = true;
+                Log.i(TAG, "onHover: 鼠标进入");
+                break;
+            case MotionEvent.ACTION_HOVER_MOVE:
+                Log.i(TAG, "onHover: 鼠标移动");
+                isDrawIndicateLine = true;
+                break;
+            case MotionEvent.ACTION_HOVER_EXIT:
+                Log.i(TAG, "onHover: 鼠标退出");
+                isDrawIndicateLine = false;
+                break;
+            default:
+                break;
+        }
+        return false;
+    }
 }

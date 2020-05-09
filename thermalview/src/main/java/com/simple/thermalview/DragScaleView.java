@@ -6,8 +6,11 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+
+import java.util.Random;
 
 public class DragScaleView extends View implements View.OnTouchListener {
     protected int screenWidth;
@@ -28,14 +31,15 @@ public class DragScaleView extends View implements View.OnTouchListener {
     private static final int LEFT_BOTTOM = 0x13;
     private static final int RIGHT_BOTTOM = 0x14;
     private static final int CENTER = 0x19;
-    private int offset = 20;
+    private int offset = 0;
     protected Paint paint = new Paint();
 
 
     protected void initScreenW_H() {
-        screenHeight = getResources().getDisplayMetrics().heightPixels - 40;
-        screenWidth = getResources().getDisplayMetrics().widthPixels;
+//        screenHeight = getResources().getDisplayMetrics().heightPixels - 200;
+//        screenWidth = getResources().getDisplayMetrics().widthPixels;
     }
+
 
     public DragScaleView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
@@ -58,11 +62,14 @@ public class DragScaleView extends View implements View.OnTouchListener {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+
+        Log.i(TAG, "onDraw: --------");
         paint.setColor(Color.RED);
         paint.setStrokeWidth(4.0f);
         paint.setStyle(Paint.Style.STROKE);
         canvas.drawRect(offset, offset, getWidth() - offset, getHeight()
                 - offset, paint);
+
     }
 
     @Override
@@ -104,7 +111,7 @@ public class DragScaleView extends View implements View.OnTouchListener {
                         top(v, dy);
                         break;
                     case CENTER: // 点击中心–>>移动
-                        center(v, dx, dy);
+//                        center(v, dx, dy);
                         break;
                     case LEFT_BOTTOM: // 左下
                         left(v, dx);
@@ -238,13 +245,38 @@ public class DragScaleView extends View implements View.OnTouchListener {
     }
 
 
-    public int getCutWidth() {
-        return getWidth() - 2 * offset;
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 
+    boolean befo = true;
 
-    public int getCutHeight() {
-        return getHeight() - 2 * offset;
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        Log.i(TAG, DragScaleView.class.getSimpleName() + " onLayout: ");
+
+        if (befo) {
+            befo = false;
+            screenWidth = getWidth();
+            screenHeight = getHeight();
+        }
+        Log.i(TAG, "onLayout:  " + changed
+                + "  left == " + left
+                + "  right == " + right
+                + "  top == " + top
+                + "  bottom == " + bottom
+        );
+
+    }
+
+    private static final String TAG = DragScaleView.class.getSimpleName();
+
+
+    public void notifyMeth() {
+        invalidate();
     }
 }
 

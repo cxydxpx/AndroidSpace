@@ -4,92 +4,62 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Path;
+import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.LinearLayout;
 
 import java.text.DecimalFormat;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
-public class ThermalImageView extends View {
+import static com.simple.thermalview.ThermalView.localArr;
 
-    private static String TAG = ThermalImageView.class.getSimpleName();
-    // 格式化温度值
-    private static DecimalFormat fmt = new DecimalFormat("#0.0");
+public class MiSurfaceView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
+
     // 布局 宽度/高度
     private int currentViewMaxWidth;
     private int currentViewMaxHeight;
-    // 热成像画笔 、 底部线画笔 、 热成像矩形中文字画笔 、识别出人脸矩形框画布
-    private Paint mPaint, mPaintLine, mPaintText, mPaintImportance;
-    private Context mContext;
-    //屏幕宽高度等份儿
-    private float meanWidth;
-    private float meanHeigth;
+
+    private SurfaceHolder surfaceHolder;
+
+    public MiSurfaceView(Context context) {
+        super(context);
+        initView();
+    }
+
+    public MiSurfaceView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        initView();
+    }
+
+    public MiSurfaceView(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        initView();
+    }
+
+    private Paint mPaint, mPaintText;
     // 数据源
     private ValueBean[][] localArr;
-    // 底部示例颜色区域数据源
-    private LocationBean[] bottomDatas = new LocationBean[255 * 5];
-    // 识别出人脸矩形的坐标与宽高
-    private int distinctleft;
-    private int distinctTop;
-    private int distinctWidth;
-    private int distinctHeght;
-    // 拖拽中
-    private boolean isDraging = false;
-    // 第一次初始化
-    private boolean isInitWindthHeight = true;
-    // 热成像矩形 上下左右坐标
-    private int oriLeft;
-    private int oriRight;
-    private int oriTop;
-    private int oriBottom;
-    // 矩形距离屏幕边界距离
-    protected int lastX;
-    protected int lastY;
-    // 拖动方向
-    private int dragDirection;
-    // onlayout配置 只执行一次
-    private boolean onlyOneLayout = true;
-    // 起始间距
-    private int offset = 0;
     // 默认宽高规格
     private int widthNum = 32;
     private int heigthNum = 32;
+    //屏幕宽高度等份儿
+    private float meanWidth;
+    private float meanHeigth;
 
-    public ThermalImageView(Context context) {
-        super(context);
-        initView(context);
-    }
+    private void initView() {
+        surfaceHolder = getHolder();
+        surfaceHolder.addCallback(this);
 
-    public ThermalImageView(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        initView(context);
-    }
-
-    public ThermalImageView(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
-        initView(context);
-    }
-
-
-    private void initView(Context context) {
-
-        localArr = new ValueBean[widthNum][heigthNum];
-
-        mContext = context;
 
         // 画主要内容 32*32的矩形
         mPaint = new Paint();
         mPaint.setStyle(Paint.Style.FILL);
         mPaint.setAntiAlias(true);
-        // 画底部线
-        mPaintLine = new Paint();
-        mPaintLine.setStrokeWidth(5);
-        mPaintLine.setAntiAlias(true);
-        mPaintLine.setColor(Color.WHITE);
 
         // 画主要内容中的文字
         mPaintText = new Paint();
@@ -98,72 +68,86 @@ public class ThermalImageView extends View {
         mPaintText.setStrokeCap(Paint.Cap.BUTT);
         mPaintText.setAntiAlias(true);
 
-        // 画人脸识别 被标记的部分
-        mPaintImportance = new Paint();
-        mPaintImportance.setColor(Color.BLACK);
-        mPaintImportance.setStrokeCap(Paint.Cap.BUTT);
-        mPaintImportance.setStyle(Paint.Style.STROKE);
-        mPaintImportance.setAntiAlias(true);
+        localArr = new ValueBean[widthNum][heigthNum];
+
+        initData();
+
+    }
+
+    private void initData() {
+
+        float[][] arrValue = new float[32][32];
+        ValueBean[][] allValue = new ValueBean[32][32];
+
+        float temp = 0;
+        Random random = new Random();
+        for (int i = 0; i < arrValue.length; i++) {
+            for (int j = 0; j < arrValue[i].length; j++) {
+                temp = random.nextInt(50);
+
+                int color = ThermalTool.getColorByValue(temp);
+
+                localArr[i][j] = new ValueBean(temp, color);
+            }
+        }
+
+    }
+
+    private boolean isRunning;
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        isRunning = true;
+        new Thread(this).start();
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-
-        if (currentViewMaxWidth > currentViewMaxHeight) {
-            mPaintText.setStrokeWidth(meanHeigth);
-        } else {
-            mPaintText.setStrokeWidth(meanWidth);
-        }
-
-        if (localArr.length == 0) {
-            return;
-        }
-
-        drawThermal(canvas);
-
-        drawThermalImport(canvas);
-
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        isRunning = false;
     }
 
-    /**
-     * 绘制人脸图像
-     *
-     * @param canvas
-     */
-    private void drawThermalImport(Canvas canvas) {
+    @Override
+    public void run() {
+        while (isRunning) {
+            try {
+                draw();
+                TimeUnit.MICROSECONDS.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
-        canvas.drawLine(getRight(), getBottom() - 100, getRight(), getBottom(), mPaintLine);
-        canvas.drawLine(getRight(), getBottom() / 2 - 100, getRight(), getBottom() / 2 + 100, mPaintLine);
-        canvas.drawLine(getRight() - 5, getBottom() / 2, getRight(), getBottom() / 2, mPaintLine);
-        Path path = new Path();
-        path.moveTo(getRight() - 15, getBottom() / 2);
-        path.lineTo(getRight() - 5, getBottom() / 2 - 20);
-        path.lineTo(getRight() - 5, getBottom() / 2 + 20);
-        path.close();
-        canvas.drawPath(path, mPaintLine);
+    private void draw() {
+        Canvas canvas = surfaceHolder.lockCanvas();
+        if (null != canvas) {
+            try {
+                if (currentViewMaxWidth > currentViewMaxHeight) {
+                    mPaintText.setStrokeWidth(meanHeigth);
+                } else {
+                    mPaintText.setStrokeWidth(meanWidth);
+                }
 
+                if (localArr.length == 0) {
+                    return;
+                }
 
-        canvas.drawLine(getRight() - 100, getBottom(), getRight(), getBottom(), mPaintLine);
-        canvas.drawLine(getRight() / 2 - 100, getBottom(), getRight() / 2 + 100, getBottom(), mPaintLine);
-        canvas.drawLine(getRight() / 2, getBottom() - 5, getRight() / 2, getBottom(), mPaintLine);
+                drawThermal(canvas);
 
-        Path path2 = new Path();
-        path2.moveTo(getRight() / 2, getBottom() - 15);
-        path2.lineTo(getRight() / 2 - 20, getBottom() - 5);
-        path2.lineTo(getRight() / 2 + 20, getBottom() - 5);
-        path2.close();
-        canvas.drawPath(path2, mPaintLine);
+//                canvas.drawRect(0, 0, 500, 500, mPaint);
 
-        canvas.drawRect(
-                distinctleft * meanWidth,
-                distinctTop * meanHeigth,
-                (distinctWidth + distinctleft) * meanWidth,
-                (distinctHeght + distinctTop) * meanHeigth,
-                mPaintImportance);
-
-
+//                drawThermalImport(canvas);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                surfaceHolder.unlockCanvasAndPost(canvas);
+            }
+        }
     }
 
     /**
@@ -198,6 +182,7 @@ public class ThermalImageView extends View {
 
     }
 
+    private static DecimalFormat fmt = new DecimalFormat("#0.0");
 
     /**
      * 设置温度数据
@@ -230,30 +215,6 @@ public class ThermalImageView extends View {
                 localArr[i][j] = arrValue[i][j];
             }
         }
-
-        invalidate();
-    }
-
-
-    /**
-     * 绘制测温范围
-     * <p>
-     * 因为setData invalidate频率比较高，所以这里不做invalidate操作
-     *
-     * @param distinctTop
-     * @param distinctleft
-     * @param distinctWidth
-     * @param distinctHeght
-     */
-    public void setDisView(int distinctTop, int distinctleft, int distinctWidth, int distinctHeght) {
-        if (localArr.length <= 0) {
-            return;
-        }
-
-        this.distinctTop = distinctTop;
-        this.distinctleft = distinctleft;
-        this.distinctWidth = distinctWidth;
-        this.distinctHeght = distinctHeght;
 
     }
 
@@ -288,7 +249,9 @@ public class ThermalImageView extends View {
 
         // 处理拖动事件
         delDrag(event, action);
-        invalidate();
+        if (isRunning) {
+            draw();
+        }
 
         return true;
     }
@@ -338,9 +301,9 @@ public class ThermalImageView extends View {
                 if (dragDirection != CENTER) {
                     Log.i(TAG, "delDrag:  "
                             + "  left == " + oriLeft
-                            + "  right == " +  oriRight
+                            + "  right == " + oriRight
                             + "  top == " + oriTop
-                            + "  bottom == " +  oriBottom
+                            + "  bottom == " + oriBottom
                     );
 
 
@@ -502,6 +465,25 @@ public class ThermalImageView extends View {
         meanWidth = currentMean;
     }
 
+    private final static String TAG = MiSurfaceView.class.getSimpleName();
+
+    // 拖拽中
+    private boolean isDraging = false;
+    // 第一次初始化
+    private boolean isInitWindthHeight = true;
+    // 热成像矩形 上下左右坐标
+    private int oriLeft;
+    private int oriRight;
+    private int oriTop;
+    private int oriBottom;
+    // 矩形距离屏幕边界距离
+    protected int lastX;
+    protected int lastY;
+    // 拖动方向
+    private int dragDirection;
+    // 起始间距
+    private int offset = 0;
+
     /**
      * 触摸点为左边缘
      *
@@ -521,59 +503,5 @@ public class ThermalImageView extends View {
         float currentMean = (oriRight - oriLeft) / Float.valueOf(widthNum);
         meanWidth = currentMean;
     }
-
-
-    @Override
-    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        // 获取宽-测量规则的模式和大小
-        int widthMode = MeasureSpec.getMode(widthMeasureSpec);
-        int widthSize = MeasureSpec.getSize(widthMeasureSpec);
-
-        // 获取高-测量规则的模式和大小
-        int heightMode = MeasureSpec.getMode(heightMeasureSpec);
-        int heightSize = MeasureSpec.getSize(heightMeasureSpec);
-
-        // 设置wrap_content的默认宽 / 高值
-        // 默认宽/高的设定并无固定依据,根据需要灵活设置
-        // 类似TextView,ImageView等针对wrap_content均在onMeasure()对设置默认宽 / 高值有特殊处理,具体读者可以自行查看
-
-//        int mWidth = ThermalTool.getDisplayWidth(mContext) - 280;
-//        int mHeight = ThermalTool.getDisplayHeight(mContext) - 50;
-
-
-        // 当布局参数设置为wrap_content时，设置默认值
-        if (getLayoutParams().width == ViewGroup.LayoutParams.WRAP_CONTENT
-                && getLayoutParams().height == ViewGroup.LayoutParams.WRAP_CONTENT) {
-            setMeasuredDimension(widthSize, heightSize);
-            // 宽 / 高任意一个布局参数为= wrap_content时，都设置默认值
-        } else if (getLayoutParams().width == ViewGroup.LayoutParams.WRAP_CONTENT) {
-            setMeasuredDimension(widthSize, heightSize);
-        } else if (getLayoutParams().height == ViewGroup.LayoutParams.WRAP_CONTENT) {
-            setMeasuredDimension(widthSize, heightSize);
-        }
-    }
-
-    @Override
-    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-        super.onLayout(changed, left, top, right, bottom);
-
-        Log.i(TAG, "onLayout:  " + changed
-                + "  left == " + left
-                + "  right == " + right
-                + "  top == " + top
-                + "  bottom == " + bottom
-        );
-
-        if (onlyOneLayout) {
-            onlyOneLayout = false;
-            currentViewMaxWidth = getWidth();
-            currentViewMaxHeight = getHeight();
-
-            meanWidth = currentViewMaxWidth / Float.valueOf(widthNum);
-            meanHeigth = currentViewMaxHeight / Float.valueOf(heigthNum);
-        }
-    }
-
 
 }
